@@ -342,3 +342,15 @@ func (w WSLStubber) GetDisk(userInputPath string, dirs *define.MachineDirs, mc *
 	// pull if needed and decompress to image location
 	return myDisk.Get()
 }
+
+func (w WSLStubber) SetRosetta(mc *vmconfigs.MachineConfig, rosetta bool) (bool, error) {
+	return false, nil
+}
+
+func (w WSLStubber) GetRosetta(mc *vmconfigs.MachineConfig) (bool, error) {
+	return false, nil
+}
+
+func (w WSLStubber) SetRosettaToFalse(rosetta bool) bool {
+	return false
+}

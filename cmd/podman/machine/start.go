@@ -67,6 +67,9 @@ func start(_ *cobra.Command, args []string) error {
 		fmt.Printf("Starting machine %q\n", vmName)
 	}
 
+	// Get Rosetta value from containers.conf
+	startOpts.Rosetta = registry.PodmanConfig().ContainersConfDefaultsRO.Machine.Rosetta
+
 	if err := shim.Start(mc, provider, dirs, startOpts); err != nil {
 		return err
 	}

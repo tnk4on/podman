@@ -177,6 +177,10 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 		}
 	}
 
+	// Rosetta is only supported Apple Silicon Mac(darwin and arm64)
+	// Other machines set Rosetta to false
+	createOpts.Rosetta = mp.SetRosettaToFalse(opts.Rosetta)
+
 	ignBuilder := ignition.NewIgnitionBuilder(ignition.DynamicIgnition{
 		Name:      userName,
 		Key:       sshKey,
@@ -443,6 +447,12 @@ func Start(mc *vmconfigs.MachineConfig, mp vmconfigs.VMProvider, dirs *machineDe
 	// releaseFunc is if the provider starts a vm using a go command
 	// and we still need control of it while it is booting until the ready
 	// socket is tripped
+
+	// Set Rosetta value to MachineConfig
+	if _, err := mp.SetRosetta(mc, opts.Rosetta); err != nil {
+		return err
+	}
+
 	releaseCmd, WaitForReady, err := mp.StartVM(mc)
 	if err != nil {
 		return err

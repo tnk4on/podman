@@ -4,6 +4,7 @@ package applehv
 
 import (
 	"fmt"
+	"runtime"
 	"strconv"
 
 	gvproxy "github.com/containers/gvisor-tap-vsock/pkg/types"
@@ -16,6 +17,7 @@ import (
 	"github.com/containers/podman/v5/pkg/machine/vmconfigs"
 	"github.com/containers/podman/v5/utils"
 	vfConfig "github.com/crc-org/vfkit/pkg/config"
+	"github.com/sirupsen/logrus"
 )
 
 // applehcMACAddress is a pre-defined mac address that vfkit recognizes
@@ -65,6 +67,8 @@ func (a AppleHVStubber) CreateVM(opts define.CreateVMOpts, mc *vmconfigs.Machine
 	}
 	ignBuilder.WithUnit(virtIOIgnitionMounts...)
 
+	mc.AppleHypervisor.Vfkit.Rosetta = opts.Rosetta
+
 	return apple.ResizeDisk(mc, mc.Resources.DiskSize)
 }
 
@@ -91,6 +95,7 @@ func (a AppleHVStubber) SetProviderAttrs(mc *vmconfigs.MachineConfig, opts defin
 	if err != nil {
 		return err
 	}
+
 	return apple.SetProviderAttrs(mc, opts, state)
 }
 
@@ -120,7 +125,7 @@ func (a AppleHVStubber) VMType() define.VMType {
 	return define.AppleHvVirt
 }
 
-func (a AppleHVStubber) PrepareIgnition(_ *vmconfigs.MachineConfig, _ *ignition.IgnitionBuilder) (*ignition.ReadyUnitOpts, error) {
+func (a AppleHVStubber) PrepareIgnition(_ *vmconfigs.MachineConfig, ignBuilder *ignition.IgnitionBuilder) (*ignition.ReadyUnitOpts, error) {
 	return nil, nil
 }
 
@@ -130,4 +135,34 @@ func (a AppleHVStubber) PostStartNetworking(mc *vmconfigs.MachineConfig, noInfo 
 
 func (a AppleHVStubber) GetDisk(userInputPath string, dirs *define.MachineDirs, mc *vmconfigs.MachineConfig) error {
 	return diskpull.GetDisk(userInputPath, dirs, mc.ImagePath, a.VMType(), mc.Name)
+}
+
+func (a AppleHVStubber) SetRosetta(mc *vmconfigs.MachineConfig, rosetta bool) (bool, error) {
+	var rosettaNew bool
+	if runtime.GOARCH == "arm64" {
+		rosettaMC := mc.AppleHypervisor.Vfkit.Rosetta
+		rosettaNew = rosettaMC
+		if !rosetta {
+			rosettaNew = rosetta
+		}
+		if rosettaMC != rosettaNew {
+			mc.AppleHypervisor.Vfkit.Rosetta = rosettaNew
+			if err := mc.Write(); err != nil {
+				logrus.Error(err)
+			}
+		}
+	}
+	return rosettaNew, nil
+}
+
+func (a *AppleHVStubber) GetRosetta(mc *vmconfigs.MachineConfig) (bool, error) {
+	rosetta := mc.AppleHypervisor.Vfkit.Rosetta
+	return rosetta, nil
+}
+
+func (a *AppleHVStubber) SetRosettaToFalse(rosetta bool) bool {
+	if runtime.GOARCH != "arm64" {
+		return false
+	}
+	return rosetta
 }
