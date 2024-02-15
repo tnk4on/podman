@@ -51,6 +51,8 @@ type MachineConfig struct {
 
 	// Starting is defined as "on" but not fully booted
 	Starting bool
+
+	Rosetta bool
 }
 
 type machineImage interface { //nolint:unused

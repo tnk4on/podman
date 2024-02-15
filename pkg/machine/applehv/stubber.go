@@ -91,6 +91,11 @@ func (a AppleHVStubber) SetProviderAttrs(mc *vmconfigs.MachineConfig, opts defin
 	if err != nil {
 		return err
 	}
+
+	if opts.Rosetta != nil {
+		mc.Rosetta = *opts.Rosetta
+	}
+
 	return apple.SetProviderAttrs(mc, opts, state)
 }
 

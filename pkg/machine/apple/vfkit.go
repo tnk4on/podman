@@ -42,6 +42,15 @@ func GetDefaultDevices(mc *vmconfigs.MachineConfig) ([]vfConfig.VirtioDevice, *d
 		return nil, nil, err
 	}
 	devices = append(devices, disk, rng, serial, readyDevice)
+
+	if mc.Rosetta {
+		rosetta, err := vfConfig.RosettaShareNew(define.MountTag)
+		if err != nil {
+			return nil, nil, err
+		}
+		devices = append(devices, rosetta)
+	}
+
 	return devices, readySocket, nil
 }
 
