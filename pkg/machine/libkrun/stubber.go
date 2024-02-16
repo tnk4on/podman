@@ -139,3 +139,11 @@ func (l LibKrunStubber) RequireExclusiveActive() bool {
 func (l LibKrunStubber) UpdateSSHPort(mc *vmconfigs.MachineConfig, port int) error {
 	return nil
 }
+
+func (l LibKrunStubber) SetRosetta(mc *vmconfigs.MachineConfig) error {
+	return nil
+}
+
+func (l LibKrunStubber) GetRosetta(mc *vmconfigs.MachineConfig) (bool, error) {
+	return false, nil
+}
