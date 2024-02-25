@@ -147,3 +147,7 @@ func (l LibKrunStubber) SetRosetta(mc *vmconfigs.MachineConfig) error {
 func (l LibKrunStubber) GetRosetta(mc *vmconfigs.MachineConfig) (bool, error) {
 	return false, nil
 }
+
+func (l LibKrunStubber) SetRosettaToFalse(rosetta bool) bool {
+	return false
+}
