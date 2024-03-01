@@ -185,7 +185,7 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 		var rosettaAsBool bool
 		rosettaAsBool, err := strconv.ParseBool(rosettaOverride)
 		if err != nil {
-			fmt.Errorf("CONTAINERS_MACHINE_ROSETTA is not a bool: %v", err)
+			return fmt.Errorf("CONTAINERS_MACHINE_ROSETTA is not a bool: %v", err)
 		}
 		createOpts.Rosetta = rosettaAsBool
 	}
