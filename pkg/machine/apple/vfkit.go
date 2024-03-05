@@ -43,10 +43,13 @@ func GetDefaultDevices(mc *vmconfigs.MachineConfig) ([]vfConfig.VirtioDevice, *d
 	}
 	devices = append(devices, disk, rng, serial, readyDevice)
 
-	if mc.Rosetta {
-		rosetta, err := vfConfig.RosettaShareNew(define.MountTag)
-		if err != nil {
-			return nil, nil, err
+	rosettaCfg := mc.AppleHypervisor.Vfkit.Rosetta
+	if rosettaCfg {
+		rosetta := &vfConfig.RosettaShare{
+			DirectorySharingConfig: vfConfig.DirectorySharingConfig{
+				MountTag: define.MountTag,
+			},
+			InstallRosetta: true,
 		}
 		devices = append(devices, rosetta)
 	}

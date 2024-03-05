@@ -130,8 +130,9 @@ func (a AppleHVStubber) VMType() define.VMType {
 func (a AppleHVStubber) PrepareIgnition(_ *vmconfigs.MachineConfig, ignBuilder *ignition.IgnitionBuilder) (*ignition.ReadyUnitOpts, error) {
 	// Only AppleHv with Apple Silicon can use Rosetta
 	if runtime.GOARCH == "arm64" {
-		rosettaUnit := ignition.SetRosettaUnit()
-		ignBuilder.WithUnit(rosettaUnit)
+		rosettaUnit := ignition.RosettaActivationUnit()
+		unregisterUnit := ignition.UnregisterHandlerUnit()
+		ignBuilder.WithUnit(rosettaUnit, unregisterUnit)
 	}
 	return nil, nil
 }
@@ -144,12 +145,13 @@ func (a AppleHVStubber) GetDisk(userInputPath string, dirs *define.MachineDirs, 
 	return diskpull.GetDisk(userInputPath, dirs, mc.ImagePath, a.VMType(), mc.Name)
 }
 
-func (a AppleHVStubber) SetRosetta(mc *vmconfigs.MachineConfig) error {
+func (a AppleHVStubber) SetRosetta(mc *vmconfigs.MachineConfig) (bool, error) {
+	var rosettaNew bool
 	if runtime.GOARCH == "arm64" {
 		cfg := registry.PodmanConfig()
 		rosetta := mc.AppleHypervisor.Vfkit.Rosetta
 		rosettaCfg := cfg.ContainersConfDefaultsRO.Machine.Rosetta
-		rosettaNew := rosetta
+		rosettaNew = rosetta
 		if !rosettaCfg {
 			rosettaNew = rosettaCfg
 		}
@@ -157,15 +159,9 @@ func (a AppleHVStubber) SetRosetta(mc *vmconfigs.MachineConfig) error {
 			var rosettaAsBool bool
 			rosettaAsBool, err := strconv.ParseBool(rosettaOverride)
 			if err != nil {
-				return fmt.Errorf("CONTAINERS_MACHINE_ROSETTA is not a bool: %v", err)
+				return false, fmt.Errorf("CONTAINERS_MACHINE_ROSETTA is not a bool: %v", err)
 			}
 			rosettaNew = rosettaAsBool
-		}
-		if rosettaNew {
-			err := machine.ActivateRosettaService(mc)
-			if err != nil {
-				return err
-			}
 		}
 		if rosetta != rosettaNew {
 			mc.AppleHypervisor.Vfkit.Rosetta = rosettaNew
@@ -174,7 +170,7 @@ func (a AppleHVStubber) SetRosetta(mc *vmconfigs.MachineConfig) error {
 			}
 		}
 	}
-	return nil
+	return rosettaNew, nil
 }
 
 func (a *AppleHVStubber) GetRosetta(mc *vmconfigs.MachineConfig) (bool, error) {
