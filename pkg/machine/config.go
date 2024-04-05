@@ -71,8 +71,9 @@ type SSHOptions struct {
 }
 
 type StartOptions struct {
-	NoInfo bool
-	Quiet  bool
+	NoInfo  bool
+	Quiet   bool
+	Rosetta bool
 }
 
 type StopOptions struct{}

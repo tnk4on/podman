@@ -558,7 +558,7 @@ func createNetworkUnit(netPort uint64) (string, error) {
 	return netUnit.ToString()
 }
 
-func (h HyperVStubber) SetRosetta(mc *vmconfigs.MachineConfig) (bool, error) {
+func (h HyperVStubber) SetRosetta(mc *vmconfigs.MachineConfig, rosetta bool) (bool, error) {
 	return false, nil
 }
 

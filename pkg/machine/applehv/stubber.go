@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	gvproxy "github.com/containers/gvisor-tap-vsock/pkg/types"
-	"github.com/containers/podman/v5/cmd/podman/registry"
 	"github.com/containers/podman/v5/pkg/machine"
 	"github.com/containers/podman/v5/pkg/machine/apple"
 	"github.com/containers/podman/v5/pkg/machine/apple/vfkit"
@@ -145,25 +144,15 @@ func (a AppleHVStubber) GetDisk(userInputPath string, dirs *define.MachineDirs, 
 	return diskpull.GetDisk(userInputPath, dirs, mc.ImagePath, a.VMType(), mc.Name)
 }
 
-func (a AppleHVStubber) SetRosetta(mc *vmconfigs.MachineConfig) (bool, error) {
+func (a AppleHVStubber) SetRosetta(mc *vmconfigs.MachineConfig, rosetta bool) (bool, error) {
 	var rosettaNew bool
 	if runtime.GOARCH == "arm64" {
-		cfg := registry.PodmanConfig()
-		rosetta := mc.AppleHypervisor.Vfkit.Rosetta
-		rosettaCfg := cfg.ContainersConfDefaultsRO.Machine.Rosetta
-		rosettaNew = rosetta
-		if !rosettaCfg {
-			rosettaNew = rosettaCfg
+		rosettaMC := mc.AppleHypervisor.Vfkit.Rosetta
+		rosettaNew = rosettaMC
+		if !rosetta {
+			rosettaNew = rosetta
 		}
-		if rosettaOverride, found := os.LookupEnv("CONTAINERS_MACHINE_ROSETTA"); found {
-			var rosettaAsBool bool
-			rosettaAsBool, err := strconv.ParseBool(rosettaOverride)
-			if err != nil {
-				return false, fmt.Errorf("CONTAINERS_MACHINE_ROSETTA is not a bool: %v", err)
-			}
-			rosettaNew = rosettaAsBool
-		}
-		if rosetta != rosettaNew {
+		if rosettaMC != rosettaNew {
 			mc.AppleHypervisor.Vfkit.Rosetta = rosettaNew
 			if err := mc.Write(); err != nil {
 				logrus.Error(err)

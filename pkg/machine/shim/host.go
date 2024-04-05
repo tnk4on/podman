@@ -7,11 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/containers/podman/v5/cmd/podman/registry"
 	"github.com/containers/podman/v5/pkg/machine"
 	"github.com/containers/podman/v5/pkg/machine/connection"
 	machineDefine "github.com/containers/podman/v5/pkg/machine/define"
@@ -179,19 +177,9 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 		}
 	}
 
-	cfg := registry.PodmanConfig()
-	createOpts.Rosetta = cfg.ContainersConfDefaultsRO.Machine.Rosetta
-	if rosettaOverride, found := os.LookupEnv("CONTAINERS_MACHINE_ROSETTA"); found {
-		var rosettaAsBool bool
-		rosettaAsBool, err := strconv.ParseBool(rosettaOverride)
-		if err != nil {
-			return fmt.Errorf("CONTAINERS_MACHINE_ROSETTA is not a bool: %v", err)
-		}
-		createOpts.Rosetta = rosettaAsBool
-	}
 	// Rosetta is only supported Apple Silicon Mac(darwin and arm64)
 	// Other machines set Rosetta to false
-	createOpts.Rosetta = mp.SetRosettaToFalse(createOpts.Rosetta)
+	createOpts.Rosetta = mp.SetRosettaToFalse(opts.Rosetta)
 
 	ignBuilder := ignition.NewIgnitionBuilder(ignition.DynamicIgnition{
 		Name:      userName,
@@ -459,6 +447,12 @@ func Start(mc *vmconfigs.MachineConfig, mp vmconfigs.VMProvider, dirs *machineDe
 	// releaseFunc is if the provider starts a vm using a go command
 	// and we still need control of it while it is booting until the ready
 	// socket is tripped
+
+	// Set Rosetta value to MachineConfig
+	if _, err := mp.SetRosetta(mc, opts.Rosetta); err != nil {
+		return err
+	}
+
 	releaseCmd, WaitForReady, err := mp.StartVM(mc)
 	if err != nil {
 		return err
