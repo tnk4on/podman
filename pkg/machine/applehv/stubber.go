@@ -127,12 +127,6 @@ func (a AppleHVStubber) VMType() define.VMType {
 }
 
 func (a AppleHVStubber) PrepareIgnition(_ *vmconfigs.MachineConfig, ignBuilder *ignition.IgnitionBuilder) (*ignition.ReadyUnitOpts, error) {
-	// Only AppleHv with Apple Silicon can use Rosetta
-	if runtime.GOARCH == "arm64" {
-		rosettaUnit := ignition.RosettaActivationUnit()
-		unregisterUnit := ignition.UnregisterHandlerUnit()
-		ignBuilder.WithUnit(rosettaUnit, unregisterUnit)
-	}
 	return nil, nil
 }
 
