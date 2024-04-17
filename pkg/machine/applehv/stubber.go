@@ -139,13 +139,9 @@ func (a AppleHVStubber) GetDisk(userInputPath string, dirs *define.MachineDirs, 
 }
 
 func (a AppleHVStubber) SetRosetta(mc *vmconfigs.MachineConfig, rosetta bool) (bool, error) {
-	var rosettaNew bool
+	rosettaNew := rosetta
 	if runtime.GOARCH == "arm64" {
 		rosettaMC := mc.AppleHypervisor.Vfkit.Rosetta
-		rosettaNew = rosettaMC
-		if !rosetta {
-			rosettaNew = rosetta
-		}
 		if rosettaMC != rosettaNew {
 			mc.AppleHypervisor.Vfkit.Rosetta = rosettaNew
 			if err := mc.Write(); err != nil {
