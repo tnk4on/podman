@@ -4,7 +4,6 @@ package applehv
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 	"strconv"
 

@@ -140,7 +140,7 @@ func (l LibKrunStubber) UpdateSSHPort(mc *vmconfigs.MachineConfig, port int) err
 	return nil
 }
 
-func (l LibKrunStubber) SetRosetta(mc *vmconfigs.MachineConfig) (bool, error) {
+func (l LibKrunStubber) SetRosetta(mc *vmconfigs.MachineConfig, rosetta bool) (bool, error) {
 	return false, nil
 }
 
