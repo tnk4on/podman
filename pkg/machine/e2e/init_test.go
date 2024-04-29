@@ -372,9 +372,14 @@ var _ = Describe("podman machine init", func() {
 	})
 
 	It("machine init with rosetta=true", func() {
-		if testProvider.VMType() != define.AppleHvVirt || testProvider.VMType() == define.AppleHvVirt && runtime.GOARCH != "arm64" {
-			Skip("Test is only for AppleHv")
+		skipIfVmtype(define.QemuVirt, "Test is only for AppleHv")
+		skipIfVmtype(define.WSLVirt, "Test is only for AppleHv")
+		skipIfVmtype(define.HyperVVirt, "Test is only for AppleHv")
+		skipIfVmtype(define.LibKrun, "Test is only for AppleHv")
+		if runtime.GOARCH != "arm64" {
+			Skip("Test is only for AppleHv with arm64 architecture")
 		}
+
 		i := initMachine{}
 		name := randomString()
 		session, err := mb.setName(name).setCmd(i.withImage(mb.imagePath)).run()
@@ -412,19 +417,18 @@ var _ = Describe("podman machine init", func() {
 	})
 
 	It("machine init with rosetta=false", func() {
-		if testProvider.VMType() != define.AppleHvVirt || testProvider.VMType() == define.AppleHvVirt && runtime.GOARCH != "arm64" {
-			Skip("Test is only for AppleHv")
+		skipIfVmtype(define.QemuVirt, "Test is only for AppleHv")
+		skipIfVmtype(define.WSLVirt, "Test is only for AppleHv")
+		skipIfVmtype(define.HyperVVirt, "Test is only for AppleHv")
+		skipIfVmtype(define.LibKrun, "Test is only for AppleHv")
+		if runtime.GOARCH != "arm64" {
+			Skip("Test is only for AppleHv with arm64 architecture")
 		}
 		configDir := filepath.Join(testDir, ".config", "containers")
-		if err := os.MkdirAll(configDir, 0755); err != nil {
-			Expect(err).ToNot(HaveOccurred())
-		}
-		f, err := os.Create(filepath.Join(configDir, "containers.conf"))
+		err := os.MkdirAll(configDir, 0755)
 		Expect(err).ToNot(HaveOccurred())
-		if _, err := f.Write(rosettaConfig); err != nil {
-			Expect(err).ToNot(HaveOccurred())
-		}
-		err = f.Close()
+
+		err = os.WriteFile(filepath.Join(configDir, "containers.conf"), rosettaConfig, 0644)
 		Expect(err).ToNot(HaveOccurred())
 
 		i := initMachine{}

@@ -18,7 +18,6 @@ type CreateVMOpts struct {
 	Dirs               *MachineDirs
 	ReExec             bool
 	UserModeNetworking bool
-	Rosetta            bool
 }
 
 type MachineDirs struct {

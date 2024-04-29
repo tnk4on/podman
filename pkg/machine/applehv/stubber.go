@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strconv"
 
+	"github.com/containers/common/pkg/config"
 	gvproxy "github.com/containers/gvisor-tap-vsock/pkg/types"
 	"github.com/containers/podman/v5/pkg/machine"
 	"github.com/containers/podman/v5/pkg/machine/apple"
@@ -17,7 +18,6 @@ import (
 	"github.com/containers/podman/v5/pkg/machine/vmconfigs"
 	"github.com/containers/podman/v5/utils"
 	vfConfig "github.com/crc-org/vfkit/pkg/config"
-	"github.com/sirupsen/logrus"
 )
 
 // applehcMACAddress is a pre-defined mac address that vfkit recognizes
@@ -67,7 +67,15 @@ func (a AppleHVStubber) CreateVM(opts define.CreateVMOpts, mc *vmconfigs.Machine
 	}
 	ignBuilder.WithUnit(virtIOIgnitionMounts...)
 
-	mc.AppleHypervisor.Vfkit.Rosetta = opts.Rosetta
+	cfg, err := config.Default()
+	if err != nil {
+		return err
+	}
+	rosetta := cfg.Machine.Rosetta
+	if runtime.GOARCH != "arm64" {
+		rosetta = false
+	}
+	mc.AppleHypervisor.Vfkit.Rosetta = rosetta
 
 	return apple.ResizeDisk(mc, mc.Resources.DiskSize)
 }
@@ -95,7 +103,6 @@ func (a AppleHVStubber) SetProviderAttrs(mc *vmconfigs.MachineConfig, opts defin
 	if err != nil {
 		return err
 	}
-
 	return apple.SetProviderAttrs(mc, opts, state)
 }
 
@@ -109,6 +116,18 @@ func (a AppleHVStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, func
 		return nil, nil, fmt.Errorf("unable to determine boot loader for this machine")
 	}
 
+	cfg, err := config.Default()
+	if err != nil {
+		return nil, nil, err
+	}
+	rosetta := cfg.Machine.Rosetta
+	rosettaNew := rosetta
+	if runtime.GOARCH == "arm64" {
+		rosettaMC := mc.AppleHypervisor.Vfkit.Rosetta
+		if rosettaMC != rosettaNew {
+			mc.AppleHypervisor.Vfkit.Rosetta = rosettaNew
+		}
+	}
 	return apple.StartGenericAppleVM(mc, vfkitCommand, bl, mc.AppleHypervisor.Vfkit.Endpoint)
 }
 
@@ -125,7 +144,7 @@ func (a AppleHVStubber) VMType() define.VMType {
 	return define.AppleHvVirt
 }
 
-func (a AppleHVStubber) PrepareIgnition(_ *vmconfigs.MachineConfig, ignBuilder *ignition.IgnitionBuilder) (*ignition.ReadyUnitOpts, error) {
+func (a AppleHVStubber) PrepareIgnition(_ *vmconfigs.MachineConfig, _ *ignition.IgnitionBuilder) (*ignition.ReadyUnitOpts, error) {
 	return nil, nil
 }
 
@@ -137,28 +156,7 @@ func (a AppleHVStubber) GetDisk(userInputPath string, dirs *define.MachineDirs, 
 	return diskpull.GetDisk(userInputPath, dirs, mc.ImagePath, a.VMType(), mc.Name)
 }
 
-func (a AppleHVStubber) SetRosetta(mc *vmconfigs.MachineConfig, rosetta bool) (bool, error) {
-	rosettaNew := rosetta
-	if runtime.GOARCH == "arm64" {
-		rosettaMC := mc.AppleHypervisor.Vfkit.Rosetta
-		if rosettaMC != rosettaNew {
-			mc.AppleHypervisor.Vfkit.Rosetta = rosettaNew
-			if err := mc.Write(); err != nil {
-				logrus.Error(err)
-			}
-		}
-	}
-	return rosettaNew, nil
-}
-
 func (a *AppleHVStubber) GetRosetta(mc *vmconfigs.MachineConfig) (bool, error) {
 	rosetta := mc.AppleHypervisor.Vfkit.Rosetta
 	return rosetta, nil
-}
-
-func (a *AppleHVStubber) SetRosettaToFalse(rosetta bool) bool {
-	if runtime.GOARCH != "arm64" {
-		return false
-	}
-	return rosetta
 }

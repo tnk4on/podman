@@ -101,9 +101,7 @@ type VMProvider interface { //nolint:interfacebloat
 	UseProviderNetworkSetup() bool
 	RequireExclusiveActive() bool
 	UpdateSSHPort(mc *MachineConfig, port int) error
-	SetRosetta(mc *MachineConfig, rosetta bool) (bool, error)
 	GetRosetta(mc *MachineConfig) (bool, error)
-	SetRosettaToFalse(rosetta bool) bool
 }
 
 // HostUser describes the host user

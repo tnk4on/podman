@@ -208,9 +208,6 @@ func initMachine(cmd *cobra.Command, args []string) error {
 	// 	return err
 	// }
 
-	// Set the default Rosetta value
-	initOpts.Rosetta = registry.PodmanConfig().ContainersConfDefaultsRO.Machine.Rosetta
-
 	err = shim.Init(initOpts, provider)
 	if err != nil {
 		return err
