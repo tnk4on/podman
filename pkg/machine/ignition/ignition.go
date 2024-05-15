@@ -249,10 +249,6 @@ func (ign *DynamicIgnition) GenerateIgnitionConfig() error {
 					Enabled: BoolToPtr(true),
 					Name:    "rosetta-activation.service",
 				},
-				{
-					Enabled: BoolToPtr(true),
-					Name:    "unregister-handler.service",
-				},
 			},
 		}
 		ignSystemd.Units = append(ignSystemd.Units, rosettaUnit.Units...)
