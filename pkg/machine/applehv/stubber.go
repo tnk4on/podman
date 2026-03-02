@@ -4,6 +4,7 @@ package applehv
 
 import (
 	"fmt"
+	"path/filepath"
 	"runtime"
 	"strconv"
 
@@ -132,6 +133,20 @@ func (a *AppleHVStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, fun
 	if mc.AppleHypervisor.Vfkit.RpcGpu {
 		if err := startRpcServer(); err != nil {
 			logrus.Warnf("failed to start rpc-server: %v", err)
+		}
+
+		// Start socat bridge BEFORE vfkit launches.
+		// vfkit vsock listen=true means vfkit connects to this Unix socket
+		// when a guest process connects to vsock port 1026.
+		// socat must be listening on the socket path before vfkit starts.
+		rtDir, rtErr := mc.RuntimeDir()
+		if rtErr == nil {
+			socketPath := filepath.Join(rtDir.GetPath(), fmt.Sprintf("%s-rpc-gpu", mc.Name))
+			if bridgeErr := startRpcGpuBridge(socketPath); bridgeErr != nil {
+				logrus.Warnf("failed to start RPC GPU bridge: %v", bridgeErr)
+			}
+		} else {
+			logrus.Warnf("failed to get runtime dir for RPC GPU bridge: %v", rtErr)
 		}
 	}
 
