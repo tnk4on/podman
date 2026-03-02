@@ -122,4 +122,5 @@ type Helper struct {
 	BinaryPath     *define.VMFile
 	VirtualMachine *config.VirtualMachine
 	Rosetta        bool
+	RpcGpu         bool
 }

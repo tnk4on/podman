@@ -52,6 +52,7 @@ type MachineConfig struct {
 	Starting bool
 
 	Rosetta bool
+	RpcGpu  bool
 
 	Ansible *AnsibleConfig
 }

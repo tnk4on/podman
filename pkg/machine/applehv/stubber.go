@@ -16,6 +16,7 @@ import (
 	"github.com/containers/podman/v6/pkg/machine/vmconfigs"
 	"github.com/containers/podman/v6/utils"
 	vfConfig "github.com/crc-org/vfkit/pkg/config"
+	"github.com/sirupsen/logrus"
 	"go.podman.io/common/pkg/config"
 )
 
@@ -73,6 +74,7 @@ func (a *AppleHVStubber) CreateVM(opts define.CreateVMOpts, mc *vmconfigs.Machin
 		rosetta = false
 	}
 	mc.AppleHypervisor.Vfkit.Rosetta = rosetta
+	mc.AppleHypervisor.Vfkit.RpcGpu = mc.RpcGpu
 
 	return apple.ResizeDisk(mc, mc.Resources.DiskSize)
 }
@@ -125,6 +127,14 @@ func (a *AppleHVStubber) StartVM(mc *vmconfigs.MachineConfig) (func() error, fun
 			mc.AppleHypervisor.Vfkit.Rosetta = rosettaNew
 		}
 	}
+
+	// Start rpc-server on host if RPC GPU is enabled
+	if mc.AppleHypervisor.Vfkit.RpcGpu {
+		if err := startRpcServer(); err != nil {
+			logrus.Warnf("failed to start rpc-server: %v", err)
+		}
+	}
+
 	return apple.StartGenericAppleVM(mc, vfkitCommand, bl, mc.AppleHypervisor.Vfkit.Endpoint)
 }
 

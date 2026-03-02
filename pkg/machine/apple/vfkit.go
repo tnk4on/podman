@@ -4,6 +4,7 @@ package apple
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/containers/podman/v6/pkg/machine/define"
 	"github.com/containers/podman/v6/pkg/machine/vmconfigs"
@@ -56,6 +57,24 @@ func GetDefaultDevices(mc *vmconfigs.MachineConfig) ([]vfConfig.VirtioDevice, *d
 			InstallRosetta: true,
 		}
 		devices = append(devices, rosetta)
+	}
+
+	if mc.AppleHypervisor != nil && mc.AppleHypervisor.Vfkit.RpcGpu {
+		rtDir, err := mc.RuntimeDir()
+		if err != nil {
+			return nil, nil, err
+		}
+		rpcGpuSocketName := fmt.Sprintf("%s-rpc-gpu", mc.Name)
+		rpcGpuSocket, err := rtDir.AppendToNewVMFile(rpcGpuSocketName, &rpcGpuSocketName)
+		if err != nil {
+			return nil, nil, err
+		}
+		rpcGpuVsock, rpcGpuErr := vfConfig.VirtioVsockNew(1026, rpcGpuSocket.GetPath(), true)
+		if rpcGpuErr != nil {
+			return nil, nil, rpcGpuErr
+		}
+		devices = append(devices, rpcGpuVsock)
+		logrus.Debug("RPC GPU vsock device added on port 1026")
 	}
 
 	return devices, readySocket, nil

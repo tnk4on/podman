@@ -167,6 +167,10 @@ func init() {
 	flags.StringVar(&providerOverride, providerFlagName, "", "Override the default machine provider")
 	_ = initCmd.RegisterFlagCompletionFunc(providerFlagName, autocompleteMachineProvider)
 
+	rpcGpuFlagName := "rpc-gpu"
+	flags.BoolVar(&initOpts.RpcGpu, rpcGpuFlagName, false,
+		"Enable RPC GPU acceleration via vsock (requires rpc-server on host)")
+
 	setDefaultConnectionFlagName := "update-connection"
 	flags.BoolVarP(&setDefaultSystemConn, setDefaultConnectionFlagName, "u", false, "Set default system connection for this machine")
 }
