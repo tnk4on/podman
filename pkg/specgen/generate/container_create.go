@@ -164,6 +164,16 @@ func MakeContainer(ctx context.Context, rt *libpod.Runtime, s *specgen.SpecGener
 		return nil, nil, nil, err
 	}
 
+	if imageData != nil {
+		// Inject image architecture as OCI annotation for hook filtering.
+		// This enables FEX-Emu hooks to match only x86/x86_64 containers
+		// via when.annotations, achieving zero overhead for ARM64 containers.
+		if s.Annotations == nil {
+			s.Annotations = make(map[string]string)
+		}
+		s.Annotations["io.podman.image.arch"] = imageData.Architecture
+	}
+
 	if len(s.OCIRuntime) > 0 {
 		options = append(options, libpod.WithCtrOCIRuntime(s.OCIRuntime))
 	} else if imageData != nil {
