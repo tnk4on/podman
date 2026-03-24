@@ -674,6 +674,78 @@ var _ = Describe("podman machine init", func() {
 		Expect(proc2Session.outputToString()).To(ContainSubstring("/proc/sys/fs/binfmt_misc/qemu-x86_64"))
 	})
 
+
+	It("machine init with fex-emu enabled", func() {
+		skipIfVmtype(define.QemuVirt, "Test is only for LibKrun")
+		skipIfVmtype(define.WSLVirt, "Test is only for LibKrun")
+		skipIfVmtype(define.HyperVVirt, "Test is only for LibKrun")
+		skipIfVmtype(define.AppleHvVirt, "Test is only for LibKrun")
+		if runtime.GOARCH != "arm64" {
+			Skip("Test is only for LibKrun with arm64 architecture")
+		}
+
+		i := initMachine{}
+		name := randomString()
+		session, err := mb.setName(name).setCmd(i.withImage(mb.imagePath)).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(session).To(Exit(0))
+
+		s := &startMachine{}
+		ssession, err := mb.setCmd(s).setTimeout(time.Minute * 10).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ssession).Should(Exit(0))
+
+		binfmt := sshMachine{}
+		binfmtSession, err := mb.setName(name).setCmd(binfmt.withSSHCommand([]string{"ls -d /proc/sys/fs/binfmt_misc/FEX-x86_64"})).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(binfmtSession).To(Exit(0))
+		Expect(binfmtSession.outputToString()).To(ContainSubstring("/proc/sys/fs/binfmt_misc/FEX-x86_64"))
+
+		binfmt32 := sshMachine{}
+		binfmt32Session, err := mb.setName(name).setCmd(binfmt32.withSSHCommand([]string{"ls -d /proc/sys/fs/binfmt_misc/FEX-x86"})).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(binfmt32Session).To(Exit(0))
+		Expect(binfmt32Session.outputToString()).To(ContainSubstring("/proc/sys/fs/binfmt_misc/FEX-x86"))
+	})
+
+	It("machine init with fex_emu=false", func() {
+		skipIfVmtype(define.QemuVirt, "Test is only for LibKrun")
+		skipIfVmtype(define.WSLVirt, "Test is only for LibKrun")
+		skipIfVmtype(define.HyperVVirt, "Test is only for LibKrun")
+		skipIfVmtype(define.AppleHvVirt, "Test is only for LibKrun")
+		if runtime.GOARCH != "arm64" {
+			Skip("Test is only for LibKrun with arm64 architecture")
+		}
+		configDir := filepath.Join(testDir, ".config", "containers")
+		err := os.MkdirAll(configDir, 0o755)
+		Expect(err).ToNot(HaveOccurred())
+
+		err = os.WriteFile(filepath.Join(configDir, "containers.conf"), fexEmuDisabledConfig, 0o644)
+		Expect(err).ToNot(HaveOccurred())
+
+		i := initMachine{}
+		name := randomString()
+		session, err := mb.setName(name).setCmd(i.withImage(mb.imagePath)).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(session).To(Exit(0))
+
+		s := &startMachine{}
+		ssession, err := mb.setCmd(s).setTimeout(time.Minute * 10).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ssession).Should(Exit(0))
+
+		binfmt := sshMachine{}
+		binfmtSession, err := mb.setName(name).setCmd(binfmt.withSSHCommand([]string{"ls -d /proc/sys/fs/binfmt_misc/FEX-x86_64"})).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(binfmtSession.ExitCode()).To(Equal(2))
+
+		qemu := sshMachine{}
+		qemuSession, err := mb.setName(name).setCmd(qemu.withSSHCommand([]string{"ls -d /proc/sys/fs/binfmt_misc/qemu-x86_64"})).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(qemuSession).To(Exit(0))
+		Expect(qemuSession.outputToString()).To(ContainSubstring("/proc/sys/fs/binfmt_misc/qemu-x86_64"))
+	})
+
 	It("init machine with invalid --provider for platform", func() {
 		var providerOverride string
 		switch testProvider.VMType() {
@@ -822,4 +894,9 @@ var p4Config = []byte(`{
 var rosettaConfig = []byte(`
 [machine]
 rosetta=false
+`)
+
+var fexEmuDisabledConfig = []byte(`
+[machine]
+fex_emu=false
 `)
