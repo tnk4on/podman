@@ -689,6 +689,10 @@ type MachineConfig struct {
 	Provider string `toml:"provider,omitempty"`
 	// Rosetta is the flag to enable Rosetta in the podman-machine VM on Apple Silicon
 	Rosetta bool `toml:"rosetta,omitempty"`
+	// FEXCodeCache enables FEX-Emu JIT code caching for x86_64 containers.
+	// Each container uses its own ephemeral cache (destroyed on container exit).
+	// Default is true.
+	FEXCodeCache bool `toml:"fex_code_cache,omitempty"`
 }
 
 // FarmConfig represents the "farm" TOML config tables.

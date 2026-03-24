@@ -53,6 +53,8 @@ type MachineConfig struct {
 
 	Rosetta bool
 
+	FEXCodeCache bool
+
 	Ansible *AnsibleConfig
 }
 

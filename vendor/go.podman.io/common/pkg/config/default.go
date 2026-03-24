@@ -308,11 +308,12 @@ func defaultMachineConfig() MachineConfig {
 		// TODO: Set machine image default here
 		// Currently the default is set in Podman as we need time to stabilize
 		// VM images and locations between different providers.
-		Image:   "",
-		Memory:  2048,
-		User:    getDefaultMachineUser(),
-		Volumes: attributedstring.NewSlice(getDefaultMachineVolumes()),
-		Rosetta: true,
+		Image:        "",
+		Memory:       2048,
+		User:         getDefaultMachineUser(),
+		Volumes:      attributedstring.NewSlice(getDefaultMachineVolumes()),
+		Rosetta:      true,
+		FEXCodeCache: true,
 	}
 }
 

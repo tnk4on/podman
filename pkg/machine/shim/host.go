@@ -18,6 +18,7 @@ import (
 	"github.com/containers/podman/v5/pkg/machine/connection"
 	machineDefine "github.com/containers/podman/v5/pkg/machine/define"
 	"github.com/containers/podman/v5/pkg/machine/env"
+	"github.com/containers/podman/v5/pkg/machine/fexenv"
 	"github.com/containers/podman/v5/pkg/machine/ignition"
 	"github.com/containers/podman/v5/pkg/machine/lock"
 	"github.com/containers/podman/v5/pkg/machine/provider"
@@ -27,6 +28,7 @@ import (
 	"github.com/containers/podman/v5/utils"
 	"github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
+	"go.podman.io/common/pkg/config"
 )
 
 // List is done at the host level to allow for a *possible* future where
@@ -113,6 +115,13 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 	}
 
 	mc.Version = vmconfigs.MachineConfigVersion
+
+	// Read FEXCodeCache setting from containers.conf
+	if fexCfg, fexErr := config.Default(); fexErr != nil {
+		logrus.Warnf("unable to read containers.conf for FEX config: %v", fexErr)
+	} else {
+		mc.FEXCodeCache = fexCfg.Machine.FEXCodeCache
+	}
 
 	createOpts := machineDefine.CreateVMOpts{
 		Name:   opts.Name,
@@ -597,6 +606,20 @@ func Start(mc *vmconfigs.MachineConfig, mp vmconfigs.VMProvider, dirs *machineDe
 
 	if err := proxyenv.ApplyProxies(mc); err != nil {
 		return err
+	}
+
+	// Apply FEX code cache setting from containers.conf
+	// Re-read config every start to pick up any changes
+	if fexCfg, fexErr := config.Default(); fexErr != nil {
+		logrus.Warnf("unable to read containers.conf for FEX code cache config: %v", fexErr)
+	} else {
+		mc.FEXCodeCache = fexCfg.Machine.FEXCodeCache
+		if err := mc.Write(); err != nil {
+			logrus.Errorf("unable to persist FEX code cache config: %v", err)
+		}
+	}
+	if err := fexenv.ApplyFEXCodeCache(mc); err != nil {
+		logrus.Warnf("unable to apply FEX code cache setting: %v", err)
 	}
 
 	// mount the volumes to the VM
