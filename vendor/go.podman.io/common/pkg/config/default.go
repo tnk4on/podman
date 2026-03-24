@@ -273,8 +273,9 @@ func defaultMachineConfig() MachineConfig {
 		Image:    "docker://quay.io/podman/machine-os",
 		Memory:   2048,
 		User:     getDefaultMachineUser(),
-		Volumes:  configfile.NewSlice(getDefaultMachineVolumes()),
-		Rosetta:  false,
+		Volumes:      configfile.NewSlice(getDefaultMachineVolumes()),
+		Rosetta:      false,
+		FEXCodeCache: true,
 	}
 }
 

@@ -14,6 +14,19 @@ import (
 	"syscall"
 	"time"
 
+	"go.podman.io/podman/v6/cmd/podman/registry"
+	"go.podman.io/podman/v6/pkg/machine"
+	"go.podman.io/podman/v6/pkg/machine/connection"
+	machineDefine "go.podman.io/podman/v6/pkg/machine/define"
+	"go.podman.io/podman/v6/pkg/machine/env"
+	"go.podman.io/podman/v6/pkg/machine/fexenv"
+	"go.podman.io/podman/v6/pkg/machine/ignition"
+	"go.podman.io/podman/v6/pkg/machine/lock"
+	"go.podman.io/podman/v6/pkg/machine/provider"
+	"go.podman.io/podman/v6/pkg/machine/proxyenv"
+	"go.podman.io/podman/v6/pkg/machine/shim/diskpull"
+	"go.podman.io/podman/v6/pkg/machine/vmconfigs"
+	"go.podman.io/podman/v6/utils"
 	"github.com/hashicorp/go-multierror"
 	"github.com/sirupsen/logrus"
 	"go.podman.io/common/pkg/config"
@@ -119,6 +132,13 @@ func Init(opts machineDefine.InitOptions, mp vmconfigs.VMProvider) error {
 
 	mc.Version = vmconfigs.MachineConfigVersion
 	mc.ImportNativeCA = opts.ImportNativeCA
+
+	// Read FEXCodeCache setting from containers.conf
+	if fexCfg, fexErr := config.Default(); fexErr != nil {
+		logrus.Warnf("unable to read containers.conf for FEX config: %v", fexErr)
+	} else {
+		mc.FEXCodeCache = fexCfg.Machine.FEXCodeCache
+	}
 
 	createOpts := machineDefine.CreateVMOpts{
 		Name:   opts.Name,
@@ -655,6 +675,20 @@ func Start(mc *vmconfigs.MachineConfig, mp vmconfigs.VMProvider, opts machine.St
 
 	if err := proxyenv.ApplyProxies(mc); err != nil {
 		return err
+	}
+
+	// Apply FEX code cache setting from containers.conf
+	// Re-read config every start to pick up any changes
+	if fexCfg, fexErr := config.Default(); fexErr != nil {
+		logrus.Warnf("unable to read containers.conf for FEX code cache config: %v", fexErr)
+	} else {
+		mc.FEXCodeCache = fexCfg.Machine.FEXCodeCache
+		if err := mc.Write(); err != nil {
+			logrus.Errorf("unable to persist FEX code cache config: %v", err)
+		}
+	}
+	if err := fexenv.ApplyFEXCodeCache(mc); err != nil {
+		logrus.Warnf("unable to apply FEX code cache setting: %v", err)
 	}
 
 	// mount the volumes to the VM
