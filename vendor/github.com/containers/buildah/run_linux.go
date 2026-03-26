@@ -494,6 +494,21 @@ rootless=%d
 		bindFiles["/run/.containerenv"] = containerenvPath
 	}
 
+	// Inject image architecture annotation for OCI hook filtering.
+	// This mirrors Podman's container_create.go behavior for podman run.
+	// Without this, annotation-based hooks (e.g., FEX-Emu) cannot match
+	// during podman build RUN steps because b.ImageAnnotations does not
+	// include io.podman.image.arch (it only contains OCI manifest annotations,
+	// and Docker v2 format images have none).
+	if arch := b.Architecture(); arch != "" {
+		if b.ImageAnnotations == nil {
+			b.ImageAnnotations = map[string]string{}
+		}
+		if _, exists := b.ImageAnnotations["io.podman.image.arch"]; !exists {
+			b.ImageAnnotations["io.podman.image.arch"] = arch
+		}
+	}
+
 	// Setup OCI hooks
 	_, err = b.setupOCIHooks(spec, (len(options.Mounts) > 0 || len(volumes) > 0))
 	if err != nil {
@@ -610,7 +625,7 @@ func (b *Builder) setupOCIHooks(config *specs.Spec, hasVolumes bool) (map[string
 			return nil, nil
 		}
 		for _, hDir := range []string{hooks.DefaultDir, hooks.OverrideDir} {
-			manager, err := hooks.New(context.Background(), []string{hDir}, []string{})
+			manager, err := hooks.New(context.Background(), []string{hDir}, []string{"precreate"})
 			if err != nil {
 				if errors.Is(err, os.ErrNotExist) {
 					continue
@@ -627,7 +642,7 @@ func (b *Builder) setupOCIHooks(config *specs.Spec, hasVolumes bool) (map[string
 			maps.Copy(allHooks, ociHooks)
 		}
 	} else {
-		manager, err := hooks.New(context.Background(), b.CommonBuildOpts.OCIHooksDir, []string{})
+		manager, err := hooks.New(context.Background(), b.CommonBuildOpts.OCIHooksDir, []string{"precreate"})
 		if err != nil {
 			return nil, err
 		}
