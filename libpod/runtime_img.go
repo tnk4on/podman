@@ -120,6 +120,16 @@ func (r *Runtime) Build(ctx context.Context, options buildahDefine.BuildOptions,
 	}
 	options.NoPivotRoot = r.config.Engine.NoPivotRoot
 
+	// Pass hooks_dir from containers.conf to buildah when not explicitly
+	// set via --hooks-dir CLI flag. Without this, rootless podman build
+	// skips OCI hooks entirely because buildah's setupOCIHooks() returns
+	// early when OCIHooksDir is empty and running rootless.
+	if options.CommonBuildOpts != nil && len(options.CommonBuildOpts.OCIHooksDir) == 0 {
+		if hooksDir := r.config.Engine.HooksDir.Get(); len(hooksDir) > 0 {
+			options.CommonBuildOpts.OCIHooksDir = hooksDir
+		}
+	}
+
 	// share the network interface between podman and buildah
 	options.NetworkInterface = r.network
 	id, ref, err := imagebuildah.BuildDockerfiles(ctx, r.store, options, dockerfiles...)
