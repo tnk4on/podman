@@ -695,6 +695,16 @@ func (c *Container) prepareProcessExec(options *ExecOptions, env []string, sessi
 	if err := JSONDeepCopy(c.config.Spec.Process, pspec); err != nil {
 		return nil, err
 	}
+
+	// Override env with the runtime spec (from disk) so that environment
+	// variables injected by OCI hooks and CDI devices at container creation
+	// are inherited by exec sessions.  The DB-stored Spec.Process only
+	// contains the pre-hook config; specFromState() reads the actual OCI
+	// config.json written by the runtime, which includes hook modifications.
+	if ctrSpec, err := c.specFromState(); err == nil && ctrSpec.Process != nil {
+		pspec.Env = ctrSpec.Process.Env
+	}
+
 	pspec.SelinuxLabel = c.config.ProcessLabel
 	pspec.Args = options.Cmd
 

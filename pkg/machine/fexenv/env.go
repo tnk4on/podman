@@ -22,33 +22,23 @@ const fexCodeCacheScriptTemplate = `#!/bin/bash
 
 FEX_ENABLED=%s
 
-update_containers_conf() {
-    local CONF="$1"
-    if [ ! -f "$CONF" ]; then
-        return
+# Clean up legacy drop-in files (from previous {append=true} approach)
+for DROPIN in /var/home/core/.config/containers/containers.conf.d/fex-code-cache.conf \
+              /root/.config/containers/containers.conf.d/fex-code-cache.conf; do
+    rm -f "$DROPIN" 2>/dev/null || true
+done
+
+for CONF_FILE in /var/home/core/.config/containers/containers.conf \
+                 /root/.config/containers/containers.conf; do
+    if [ ! -f "$CONF_FILE" ]; then
+        continue
     fi
-
-    # Remove any existing FEX_ENABLECODECACHINGWIP env line
-    sed -i '/FEX_ENABLECODECACHINGWIP/d' "$CONF"
-
     if [ "$FEX_ENABLED" = "true" ]; then
-        # Add env line under [containers] section
-        # If env line exists, append to it; otherwise add a new one
-        if grep -q '^env\s*=' "$CONF"; then
-            # env line exists — replace it adding FEX env var
-            sed -i 's|^env\s*=.*|&\nenv = ["FEX_ENABLECODECACHINGWIP=1"]|' "$CONF"
-            # Deduplicate: keep only last env line
-            tac "$CONF" | awk '/^env\s*=/ && !seen {seen=1; print; next} /^env\s*=/ {next} {print}' | tac > "${CONF}.tmp" && mv "${CONF}.tmp" "$CONF"
-        else
-            # No env line — add after [containers]
-            sed -i '/^\[containers\]/a env = ["FEX_ENABLECODECACHINGWIP=1"]' "$CONF"
-        fi
+        sed -i 's/"FEX_ENABLECODECACHINGWIP=0"/"FEX_ENABLECODECACHINGWIP=1"/' "$CONF_FILE"
+    else
+        sed -i 's/"FEX_ENABLECODECACHINGWIP=1"/"FEX_ENABLECODECACHINGWIP=0"/' "$CONF_FILE"
     fi
-}
-
-# Update both rootless (core) and rootful (root) containers.conf
-update_containers_conf /var/home/core/.config/containers/containers.conf
-update_containers_conf /root/.config/containers/containers.conf
+done
 `
 
 // ApplyFEXCodeCache injects or removes FEX code cache env var in VM containers.conf.
