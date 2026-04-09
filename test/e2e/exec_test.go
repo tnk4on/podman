@@ -108,6 +108,41 @@ var _ = Describe("Podman exec", func() {
 		Expect(session.OutputToString()).To(Equal("/bin"))
 	})
 
+	It("podman exec inherits OCI hook injected environment", func() {
+		SkipIfRemote("hooks are not supported in remote mode")
+
+		hooksDir := filepath.Join(podmanTest.TempDir, "hooks")
+		err := os.MkdirAll(hooksDir, 0o755)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Precreate hook is a config-filter: it reads config.json from stdin
+		// and must write the modified config.json to stdout.
+		hookScript := filepath.Join(hooksDir, "inject-env.sh")
+		err = os.WriteFile(hookScript, []byte("#!/bin/sh\n"+
+			"jq '.process.env += [\"TEST_HOOK_VAR=from_hook\"]'\n"), 0o755)
+		Expect(err).ToNot(HaveOccurred())
+
+		hookJSON := filepath.Join(hooksDir, "inject-env.json")
+		err = os.WriteFile(hookJSON, []byte(fmt.Sprintf(`{
+  "version": "1.0.0",
+  "hook": {
+    "path": "%s"
+  },
+  "when": { "always": true },
+  "stages": ["precreate"]
+}`, hookScript)), 0o644)
+		Expect(err).ToNot(HaveOccurred())
+
+		session := podmanTest.Podman([]string{"run", "-d", "--hooks-dir", hooksDir, "--name", "hook_env_test", ALPINE, "sleep", "300"})
+		session.WaitWithDefaultTimeout()
+		Expect(session).Should(ExitCleanly())
+
+		exec := podmanTest.Podman([]string{"exec", "hook_env_test", "printenv", "TEST_HOOK_VAR"})
+		exec.WaitWithDefaultTimeout()
+		Expect(exec).Should(ExitCleanly())
+		Expect(exec.OutputToString()).To(Equal("from_hook"))
+	})
+
 	It("podman exec os.Setenv env", func() {
 		// remote doesn't properly interpret os.Setenv
 		setup := podmanTest.RunTopContainer("test1")
