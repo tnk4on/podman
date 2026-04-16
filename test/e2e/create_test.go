@@ -112,6 +112,18 @@ var _ = Describe("Podman create", func() {
 		Expect(data[0].Config.Annotations).To(HaveKeyWithValue("HELLO", "WORLD,WithComma"))
 	})
 
+	It("podman create auto-injects io.podman.image.arch annotation", func() {
+		session := podmanTest.Podman([]string{"create", "--name", "arch_test", ALPINE})
+		session.WaitWithDefaultTimeout()
+		Expect(session).Should(ExitCleanly())
+
+		check := podmanTest.Podman([]string{"inspect", "arch_test"})
+		check.WaitWithDefaultTimeout()
+		data := check.InspectContainerToJSON()
+		Expect(data[0].Config.Annotations).To(HaveKey("io.podman.image.arch"))
+		Expect(data[0].Config.Annotations["io.podman.image.arch"]).ToNot(BeEmpty())
+	})
+
 	It("podman create --entrypoint command", func() {
 		session := podmanTest.Podman([]string{"create", "--name", "entrypoint_test", "--entrypoint", "/bin/foobar", ALPINE})
 		session.WaitWithDefaultTimeout()
