@@ -134,5 +134,26 @@ func handleLLink(targetPath, path string) error {
 	// POSIX.1-2008 so to make it clear that we need non-symlink
 	// following here we use the linkat syscall which has a flags
 	// field to select symlink following or not.
-	return unix.Linkat(unix.AT_FDCWD, targetPath, unix.AT_FDCWD, path, 0)
+	err := unix.Linkat(unix.AT_FDCWD, targetPath, unix.AT_FDCWD, path, 0)
+	if err == nil {
+		return nil
+	}
+
+	// On VirtioFS, linkat(flags=0) can fail with ENOENT when the target
+	// is a symlink whose relative target does not exist yet. This is
+	// common in ostree-based container images where symlinks point to
+	// content that may not be fully extracted. In this case, replicate
+	// the symlink instead of creating a hardlink.
+	if errors.Is(err, syscall.ENOENT) {
+		if info, statErr := os.Lstat(targetPath); statErr == nil &&
+			(info.Mode()&os.ModeSymlink) != 0 {
+			linkTarget, readErr := os.Readlink(targetPath)
+			if readErr != nil {
+				return err
+			}
+			return os.Symlink(linkTarget, path)
+		}
+	}
+
+	return err
 }

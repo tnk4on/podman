@@ -77,8 +77,23 @@ func untar() {
 		root = dst
 	}
 
-	if err := chroot(root); err != nil {
-		fatal(err)
+	if os.Getenv("CONTAINERS_STORAGE_SKIP_CHROOT") != "" {
+		// Skip chroot/pivot_root for VirtioFS or other remote filesystems
+		// where pivot_root causes hardlink resolution failures.
+		// Resolve dst to an absolute path under root since we skip chroot.
+		abs, err := filepath.Abs(root)
+		if err != nil {
+			fatal(err)
+		}
+		if dst == "/" {
+			dst = abs
+		} else {
+			dst = filepath.Join(abs, dst)
+		}
+	} else {
+		if err := chroot(root); err != nil {
+			fatal(err)
+		}
 	}
 
 	if err := archive.Unpack(os.Stdin, dst, &options); err != nil {

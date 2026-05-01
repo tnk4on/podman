@@ -4,6 +4,7 @@ package apple
 
 import (
 	"errors"
+	"fmt"
 
 	vfConfig "github.com/crc-org/vfkit/pkg/config"
 	"github.com/sirupsen/logrus"
@@ -41,7 +42,22 @@ func GetDefaultDevices(mc *vmconfigs.MachineConfig) ([]vfConfig.VirtioDevice, *d
 	if err != nil {
 		return nil, nil, err
 	}
-	devices = append(devices, disk, rng, readyDevice)
+
+	rtDir, err := mc.RuntimeDir()
+	if err != nil {
+		return nil, nil, err
+	}
+	bcvkFsdSocketName := fmt.Sprintf("%s-bcvk-fsd", mc.Name)
+	bcvkFsdSocket, err := rtDir.AppendToNewVMFile(bcvkFsdSocketName, &bcvkFsdSocketName)
+	if err != nil {
+		return nil, nil, err
+	}
+	bcvkFsdDevice, err := vfConfig.VirtioVsockNew(5001, bcvkFsdSocket.GetPath(), true)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	devices = append(devices, disk, rng, readyDevice, bcvkFsdDevice)
 	if mc.LibKrunHypervisor == nil || !logrus.IsLevelEnabled(logrus.DebugLevel) {
 		// If libkrun is the provider and we want to show the debug console,
 		// don't add a virtio serial device to avoid redirecting the output.

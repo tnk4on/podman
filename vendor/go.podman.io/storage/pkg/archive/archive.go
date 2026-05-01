@@ -29,6 +29,19 @@ import (
 	"go.podman.io/storage/pkg/unshare"
 )
 
+// errDeferHardlink is returned by extractTarFileEntry when a hardlink target
+// does not exist yet. The caller should collect these and retry after all
+// other entries have been extracted. This handles tar archives where hardlink
+// entries appear before their targets (common in ostree-based container images).
+type errDeferHardlink struct {
+	targetPath string
+	path       string
+}
+
+func (e errDeferHardlink) Error() string {
+	return fmt.Sprintf("deferred hardlink: %s -> %s", e.path, e.targetPath)
+}
+
 type (
 	// Compression is the state represents if compressed or not.
 	Compression int
@@ -766,6 +779,12 @@ func extractTarFileEntry(path, extractDir string, hdr *tar.Header, reader io.Rea
 			return breakoutError(fmt.Errorf("invalid hardlink %q -> %q", targetPath, hdr.Linkname))
 		}
 		if err := handleLLink(targetPath, path); err != nil {
+			if errors.Is(err, syscall.ENOENT) {
+				// Target may not exist yet (tar entry order). Return a
+				// sentinel so the caller can defer and retry after all
+				// other entries have been extracted.
+				return errDeferHardlink{targetPath: targetPath, path: path}
+			}
 			return err
 		}
 
@@ -1092,6 +1111,11 @@ func Unpack(decompressedArchive io.Reader, dest string, options *TarOptions) err
 	defer pools.BufioReader32KPool.Put(trBuf)
 
 	var dirs []*tar.Header
+	type deferredLink struct {
+		targetPath string
+		path       string
+	}
+	var deferredLinks []deferredLink
 	idMappings := idtools.NewIDMappingsFromMaps(options.UIDMaps, options.GIDMaps)
 	rootIDs := idMappings.RootPair()
 	whiteoutConverter := GetWhiteoutConverter(options.WhiteoutFormat, options.WhiteoutData)
@@ -1203,13 +1227,28 @@ loop:
 		}
 
 		if err = extractTarFileEntry(path, dest, hdr, trBuf, doChown, chownOpts, options.InUserNS, options.IgnoreChownErrors, options.ForceMask, buffer); err != nil {
-			return err
+			var deferErr errDeferHardlink
+			if errors.As(err, &deferErr) {
+				deferredLinks = append(deferredLinks, deferredLink{
+					targetPath: deferErr.targetPath,
+					path:       deferErr.path,
+				})
+			} else {
+				return err
+			}
 		}
 
 		// Directory mtimes must be handled at the end to avoid further
 		// file creation in them to modify the directory mtime
 		if hdr.Typeflag == tar.TypeDir {
 			dirs = append(dirs, hdr)
+		}
+	}
+
+	// Retry deferred hardlinks now that all other entries have been extracted.
+	for _, dl := range deferredLinks {
+		if err := handleLLink(dl.targetPath, dl.path); err != nil {
+			return fmt.Errorf("deferred hardlink %s -> %s: %w", dl.path, dl.targetPath, err)
 		}
 	}
 
